@@ -1,0 +1,9 @@
+Lifeless 0.1
+
+Lifeless is a Bukkit plugin that implements hardcore mode in SMP. Its goal is to integrate as seemlessly
+as possible, so that the end user can switch to hardcore mode as if it was implemented directly. Currently,
+hardcore mode can be reached via the vanilla /gamemode command with a gamemode of 2. In the future, there
+will be support to set the default gamemode to hardcore in the server.properties file. A unique feature of
+Lifeless is that unlike other plugins, when you die you aren't banned from the server. Instead, all of your
+changes since the time you joined hardcore mode are undone. That way, you can keep on playing. Currently,
+this is very buggy and any debug support would be greatly apreciated.
