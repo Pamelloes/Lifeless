@@ -1,0 +1,9 @@
+name: Lifeless
+main: org.dyndns.pamelloes.Lifeless.Lifeless
+version: 0.1
+description: Lets you play in Hardcore mode in SMP.
+commands:
+   hardcore:
+      description: This command toggles Hardcore mode if something went wrong hooking into /gamemode <player> <mode>
+      permission: bukkit.command.gamemode
+      usage: /hardcore <player>
