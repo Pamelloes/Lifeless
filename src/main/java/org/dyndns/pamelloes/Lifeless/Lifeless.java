@@ -1,17 +1,20 @@
 package org.dyndns.pamelloes.Lifeless;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.logging.Logger;
 
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.SimpleCommandMap;
 import org.bukkit.command.defaults.GameModeCommand;
 import org.bukkit.command.defaults.VanillaCommand;
-import org.bukkit.entity.Player;
 import org.bukkit.event.Event.Type;
 import org.bukkit.event.Event.Priority;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -26,7 +29,7 @@ public class Lifeless extends JavaPlugin {
 	protected List<String> names = new ArrayList<String>();
 	
 	private Object lock = new Object();
-	private List<Player> hardcore = new ArrayList<Player>();
+	private List<OfflinePlayer> hardcore = new ArrayList<OfflinePlayer>();
 	
 	private  UpdateThread async = new UpdateThread(this);
 	
@@ -48,6 +51,12 @@ public class Lifeless extends JavaPlugin {
 		else log.info("[Lifeless] Lifeless enabled");
 	}
 	
+	/**
+	 * Tries to hook into /gamemode command via reflection.
+	 * @param pm A SimplePluginManager (to be manipulated via reflection)
+	 * @return true if the command was properly registered, false if the
+	 * backup command was registered due to an issue.
+	 */
 	@SuppressWarnings({ "serial", "unchecked" })
 	private boolean registerCmd(SimplePluginManager pm) {
 		Field f = null;
@@ -120,6 +129,9 @@ public class Lifeless extends JavaPlugin {
 		return true;
 	}
 	
+	/**
+	 * Loads saved data.
+	 */
 	@SuppressWarnings("unchecked")
 	private void loadData() {
 		//TODO Load block data from flatfile.
@@ -127,73 +139,97 @@ public class Lifeless extends JavaPlugin {
 		if(file.exists()) try {
 			players.load(file);
 			names = players.getList("players");
-			Player[] ps = getServer().getOnlinePlayers();
-			for(Player p : ps) {
-				if(names.contains(p.getName())) hardcore.add(p);
+			Iterator<String> i = names.iterator();
+			while(i.hasNext()) {
+				OfflinePlayer player = getServer().getOfflinePlayer(i.next());
+				if(player==null) i.remove();
+				else hardcore.add(player);
 			}
 		} catch(Exception e) {
 		}
 	}
 
+	/**
+	 * Registers a fallback command in case the program couldn't hook into /gamemode
+	 */
 	private void registerFallback() {
 		this.getCommand("hardcore").setExecutor(new HardcoreCommandExecutor(this));
 	}
 	
+	/**
+	 * Registers the necessary events.
+	 * @param pm The PluginManager to register the events through.
+	 */
 	private void registerEvents(PluginManager pm) {
-		LifelessPlayerListener lpl = new LifelessPlayerListener(this);
-		pm.registerEvent(Type.PLAYER_JOIN, lpl, Priority.Monitor, this);
-		pm.registerEvent(Type.PLAYER_QUIT, lpl, Priority.Monitor, this);
-		pm.registerEvent(Type.PLAYER_KICK, lpl, Priority.Monitor, this);
-		
 		LifelessBlockListener lbl = new LifelessBlockListener(async);
 		pm.registerEvent(Type.BLOCK_BREAK, lbl, Priority.Monitor, this);
 		pm.registerEvent(Type.BLOCK_BURN, lbl, Priority.Monitor, this);
 		pm.registerEvent(Type.BLOCK_PLACE, lbl, Priority.Monitor, this);
 	}
 	
-	public boolean hardcore(Player player) {
-		return hardcore(player,true);
-	}
-	
-	public boolean hardcore(Player player, boolean save) {
+	/**
+	 * Puts the given player into hardcore.
+	 * @param player The Player to put in hardcore.
+	 * @return True if the player was put in hardcore, false if they
+	 * already were in it.
+	 */
+	public boolean hardcore(OfflinePlayer player) {
 		synchronized(lock) {
 			if(hardcore.contains(player)) return false;
 			hardcore.add(player);
-			if(save) names.add(player.getName());
+			names.add(player.getName());
 			log.info("[Lifeless] " + player.getName() + " has entered Hardcore.");
 			return true;
 		}
 	}
-	
-	public boolean unHardcore(Player player) {
-		return unHardcore(player,true);
-	}
-	
-	public boolean unHardcore(Player player, boolean save) {
+
+	/**
+	 * Tales the given player out of hardcore.
+	 * @param player The Player to be taken out of hardcore.
+	 * @return True if the player was removed from hardcore, false if they
+	 * didn't have it in the first place.
+	 */
+	public boolean unHardcore(OfflinePlayer player) {
 		synchronized(lock) {
 			if(!hardcore.contains(player)) return false;
 			hardcore.remove(player);
-			if(save) names.remove(player.getName());
+			names.remove(player.getName());
 			log.info("[Lifeless] " + player.getName() + " has left Hardcore.");
 			return true;
 		}
 	}
 	
-	public boolean isHardcore(Player player) {
+	/**
+	 * Checks if the given player is in hardcore mode.
+	 * @param player The player to check if is in hardcore mode.
+	 * @return True if the given player is in hardcore mode.
+	 */
+	public boolean isHardcore(OfflinePlayer player) {
 		synchronized(lock) {
 			return hardcore.contains(player);
 		}
 	}
 
+	@Override
 	public void onDisable() {
-		// TODO Save block data to flatfile.
+		saveData();
+	}
+	
+	/**
+	 * Saves long-term data.
+	 */
+	private void saveData() {
 		players.set("players",names);
 		try {
 			players.save(new File(this.getDataFolder(),"players.yml"));
 		} catch (IOException e) {
 			log.warning("[Lifeless] Could not save active players");
 		}
-		async.stop();
+		try {
+			async.save(new ObjectOutputStream(new FileOutputStream(new File(this.getDataFolder(),"block.dat"))), false);
+		} catch (IOException e) {
+			log.warning("[Lifeless] Could not save block data");
+		}
 		log.info("[Lifeless] Lifeless disabled");
 	}
 

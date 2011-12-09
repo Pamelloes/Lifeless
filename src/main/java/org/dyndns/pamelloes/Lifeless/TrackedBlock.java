@@ -3,22 +3,31 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.Iterator;
 import java.util.Stack;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 import org.dyndns.pamelloes.Lifeless.serializable.LocationSerializable;
 
-
+/**
+ * This class is used to track changes performed to an associated Location so that they can be undone.
+ * 
+ * @author Pamelloes
+ */
 public class TrackedBlock implements Serializable {
+	private static final long serialVersionUID = -6895861990530377170L;
 	private transient Lifeless life;
 	private transient Location position;
 	private int id;
 	private boolean remove;
 	
 	private Stack<Integer> changesid = new Stack<Integer>();
-	private Stack<Player> changesperson = new Stack<Player>();
+	private transient Stack<OfflinePlayer> changesperson = new Stack<OfflinePlayer>();
 	
 	/**
 	 * Creates a new TrackedBlock for the given block.
@@ -168,10 +177,36 @@ public class TrackedBlock implements Serializable {
 	private void writeObject(ObjectOutputStream out) throws IOException {
 		out.defaultWriteObject();
 		out.writeObject(new LocationSerializable(position));
+		
+		Stack<String> names = new Stack<String>();
+		names.ensureCapacity(changesperson.size());
+		Iterator<OfflinePlayer> i = changesperson.iterator();
+		while(i.hasNext()) {
+			names.add(i.next().getName());
+		}
+		out.writeObject(names);
 	}
 
 	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+		Plugin plugin = Bukkit.getServer().getPluginManager().getPlugin("Lifeless");
+		if(plugin==null) throw new NullPointerException("No Lifeless plugin could be found!");
+		if(plugin instanceof Lifeless) life = (Lifeless) plugin;
+		else throw new ClassCastException("The plugin called \"Lifeless\" is not an instance of Lifeless!");
+		
 		in.defaultReadObject();
 		position = ((LocationSerializable) in.readObject()).getLocation();
+		
+		@SuppressWarnings("unchecked")
+		Stack<String> names = (Stack<String>) in.readObject();
+		changesperson.ensureCapacity(names.size());
+		Iterator<String> i = names.iterator();
+		Iterator<Integer> ii = changesid.iterator();
+		while(i.hasNext()) {
+			OfflinePlayer player = Bukkit.getOfflinePlayer(i.next());
+			ii.next();
+			if(player==null) ii.remove();
+			else changesperson.add(player);
+		}
+		
 	}
 }

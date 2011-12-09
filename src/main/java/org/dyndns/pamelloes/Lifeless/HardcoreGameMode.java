@@ -8,6 +8,12 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.defaults.GameModeCommand;
 import org.bukkit.entity.Player;
 
+/**
+ * This class extends the vanilla GameModeCommand to allow the use
+ * to enter hardcore mode via /gamemode <user> 2
+ * 
+ * @author Pamelloes
+ */
 public class HardcoreGameMode extends GameModeCommand {
 
 		private Lifeless life;

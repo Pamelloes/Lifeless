@@ -1,5 +1,8 @@
 package org.dyndns.pamelloes.Lifeless;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -10,10 +13,19 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockBurnEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 
+/**
+ * This Thread is the Heart of the program, it processes all of the data. If this Thread gets overloaded,
+ * however, delays can grow exponential.
+ * 
+ * @author Pamelloes
+ *
+ */
 public class UpdateThread implements Runnable {
 	private Lifeless life;
 	private Object lock = new Object();
 	private boolean run = true;
+	private boolean critical = true;
+	private boolean running = false;
 	private List<Event> events = new ArrayList<Event>();
 	private List<Object> data = new ArrayList<Object>();
 	
@@ -29,48 +41,138 @@ public class UpdateThread implements Runnable {
 		this.life=life;
 	}
 	
+	/**
+	 * Starts the run-loop, should <strong>NOT</strong>  be called directly.
+	 */
 	public void run() {
 		Event process = null;
 		Object dat = null;
-		boolean execute = false;
+		boolean execute = false,canrun=false;;
 		synchronized(lock) {
 			execute = run;
+			canrun = critical;
+			running=true;
 		}
-		while(execute) {
+		while(canrun && (events.size()>0 || execute)) {
 			process = null;
 			dat = null;
 			synchronized(lock) {
 				if(events.size()>0) {
 					process = events.remove(0);
 					dat = data.remove(0);
-				}
+				} else try {
+					Thread.sleep(50);
+				} catch(Exception e) {}
 			}
 			
 			if(process!=null) processEvent(process,dat);
-			else try {
-				Thread.sleep(50);
-			} catch(Exception e) {}
 			
 			synchronized(lock) {
 				execute = run;
+				canrun = critical;
+			}
+		}
+		synchronized(lock) {
+			running=false;
+		}
+	}
+	
+	/**
+	 * Stops the execution. When this is called, the thread will finish its
+	 * event queue, and then terminate, if you need immediate termination,
+	 * use stopNow(), which will stop after the current event is processed.
+	 * @param block Whether or not this method should block until the Thread
+	 * terminates.
+	 */
+	public void stop(boolean block) {
+		synchronized(lock) {
+			run = false;
+		}
+		if(block) {
+			while(isRunning()) {
+				try {
+					Thread.sleep(100);
+				} catch(Exception e) {}
 			}
 		}
 	}
 	
-	public void stop() {
+	/**
+	 * Stops the execution. When this is called, the thread will finish
+	 * the event it is currently processing and then terminate.
+	 * <br />
+	 * <br />
+	 * <strong>WARNING:</strong> May result in data loss.
+	 * @param block Whether or not this method should block until the Thread
+	 * terminates.
+	 */
+	public void stopNow(boolean block) {
 		synchronized(lock) {
-			run = false;
+			critical=false;
+		}
+		if(block) {
+			while(isRunning()) {
+				try {
+					Thread.sleep(100);
+				} catch(Exception e) {}
+			}
 		}
 	}
 	
+	/**
+	 * Adds an event to the event-process queue.
+	 * @param e The event to be processed.
+	 */
 	public void queueEvent(Event e) {
 		queueEvent(e,null);
 	}
 	
+	/**
+	 * Adds an event to event-process queue with an argument.
+	 * @param e The event to be processed (in time :P)
+	 * @param data The data to be passed with the event. This is
+	 * typically something important that will might not
+	 * be the same when the event is processed.
+	 */
 	public void queueEvent(Event e, Object data) {
 		synchronized(lock) {
+			if(!run) return;
 			events.add(e);
 			this.data.add(data);
+		}
+	}
+	
+	/**
+	 * Saves the UpdateThread's data to a file. This method stops the Thread, and
+	 * then waits until the Thread finishes stopping before saving.
+	 * @param oop ObjectOutputStream to write the data to.
+	 * @param asap Whether or not to stop the Thread via stopNow()[true] or stop()[false];
+	 * @throws IOException If an error occurs writing the data.
+	 */
+	public void save(ObjectOutputStream oop, boolean asap) throws IOException {
+		if(asap) stopNow(true);
+		else stop(true);
+		oop.writeObject(blocks);
+	}
+	
+	/**
+	 * Loads the object block data from an ObjectInputStream.
+	 * @param oip The stream from which to load the data.
+	 * @throws IOException If the data couldn't be read.
+	 * @throws ClassNotFoundException If the class read can't
+	 * be resolved.
+	 */
+	@SuppressWarnings("unchecked")
+	public void load(ObjectInputStream oip) throws IOException, ClassNotFoundException {
+		blocks = (List<TrackedBlock>) oip.readObject();
+	}
+	
+	/**
+	 * @return True if this Object is currently running.
+	 */
+	public boolean isRunning() {
+		synchronized(lock) {
+			return running;
 		}
 	}
 	
