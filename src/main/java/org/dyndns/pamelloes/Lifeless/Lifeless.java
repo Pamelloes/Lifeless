@@ -1,11 +1,14 @@
 package org.dyndns.pamelloes.Lifeless;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -26,10 +29,8 @@ public class Lifeless extends JavaPlugin {
 	
 	public Logger log = Logger.getLogger("Minecraft");
 
-	protected List<String> names = new ArrayList<String>();
-	
-	private Object lock = new Object();
-	private List<OfflinePlayer> hardcore = new ArrayList<OfflinePlayer>();
+	private List<String> names = Collections.synchronizedList(new ArrayList<String>());
+	private List<OfflinePlayer> hardcore = Collections.synchronizedList(new ArrayList<OfflinePlayer>());
 	
 	private  UpdateThread async = new UpdateThread(this);
 	
@@ -134,7 +135,16 @@ public class Lifeless extends JavaPlugin {
 	 */
 	@SuppressWarnings("unchecked")
 	private void loadData() {
-		//TODO Load block data from flatfile.
+		File f = new File(this.getDataFolder(),"block.dat");
+		if(f.exists()) {
+			try {
+				async.load(new ObjectInputStream(new FileInputStream(f)));
+			} catch (IOException e) {
+				log.warning("[Lifeless] Could not load block data");
+			} catch (ClassNotFoundException e) {
+				log.warning("[Lifeless] Could not resolve block data");
+			}
+		}
 		File file = new File(getDataFolder(),"players.yml");
 		if(file.exists()) try {
 			players.load(file);
@@ -174,13 +184,11 @@ public class Lifeless extends JavaPlugin {
 	 * already were in it.
 	 */
 	public boolean hardcore(OfflinePlayer player) {
-		synchronized(lock) {
-			if(hardcore.contains(player)) return false;
-			hardcore.add(player);
-			names.add(player.getName());
-			log.info("[Lifeless] " + player.getName() + " has entered Hardcore.");
-			return true;
-		}
+		if(hardcore.contains(player)) return false;
+		hardcore.add(player);
+		names.add(player.getName());
+		log.info("[Lifeless] " + player.getName() + " has entered Hardcore.");
+		return true;
 	}
 
 	/**
@@ -190,13 +198,11 @@ public class Lifeless extends JavaPlugin {
 	 * didn't have it in the first place.
 	 */
 	public boolean unHardcore(OfflinePlayer player) {
-		synchronized(lock) {
-			if(!hardcore.contains(player)) return false;
-			hardcore.remove(player);
-			names.remove(player.getName());
-			log.info("[Lifeless] " + player.getName() + " has left Hardcore.");
-			return true;
-		}
+		if(!hardcore.contains(player)) return false;
+		hardcore.remove(player);
+		names.remove(player.getName());
+		log.info("[Lifeless] " + player.getName() + " has left Hardcore.");
+		return true;
 	}
 	
 	/**
@@ -205,12 +211,9 @@ public class Lifeless extends JavaPlugin {
 	 * @return True if the given player is in hardcore mode.
 	 */
 	public boolean isHardcore(OfflinePlayer player) {
-		synchronized(lock) {
-			return hardcore.contains(player);
-		}
+		return hardcore.contains(player);
 	}
 
-	@Override
 	public void onDisable() {
 		saveData();
 	}

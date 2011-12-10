@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
@@ -22,12 +23,11 @@ import org.bukkit.event.block.BlockPlaceEvent;
  */
 public class UpdateThread implements Runnable {
 	private Lifeless life;
-	private Object lock = new Object();
 	private boolean run = true;
 	private boolean critical = true;
 	private boolean running = false;
-	private List<Event> events = new ArrayList<Event>();
-	private List<Object> data = new ArrayList<Object>();
+	private List<Event> events = Collections.synchronizedList(new ArrayList<Event>());
+	private List<Object> data = Collections.synchronizedList(new ArrayList<Object>());
 	
 	private List<TrackedBlock> blocks = new ArrayList<TrackedBlock>();
 	
@@ -48,7 +48,7 @@ public class UpdateThread implements Runnable {
 		Event process = null;
 		Object dat = null;
 		boolean execute = false,canrun=false;;
-		synchronized(lock) {
+		synchronized(this) {
 			execute = run;
 			canrun = critical;
 			running=true;
@@ -56,23 +56,21 @@ public class UpdateThread implements Runnable {
 		while(canrun && (events.size()>0 || execute)) {
 			process = null;
 			dat = null;
-			synchronized(lock) {
-				if(events.size()>0) {
-					process = events.remove(0);
-					dat = data.remove(0);
-				} else try {
-					Thread.sleep(50);
-				} catch(Exception e) {}
-			}
+			if(events.size()>0) {
+				process = events.remove(0);
+				dat = data.remove(0);
+			} else try {
+				Thread.sleep(50);
+			} catch(Exception e) {}
 			
 			if(process!=null) processEvent(process,dat);
 			
-			synchronized(lock) {
+			synchronized(this) {
 				execute = run;
 				canrun = critical;
 			}
 		}
-		synchronized(lock) {
+		synchronized(this) {
 			running=false;
 		}
 	}
@@ -84,10 +82,8 @@ public class UpdateThread implements Runnable {
 	 * @param block Whether or not this method should block until the Thread
 	 * terminates.
 	 */
-	public void stop(boolean block) {
-		synchronized(lock) {
-			run = false;
-		}
+	public synchronized void stop(boolean block) {
+		run = false;
 		if(block) {
 			while(isRunning()) {
 				try {
@@ -106,10 +102,8 @@ public class UpdateThread implements Runnable {
 	 * @param block Whether or not this method should block until the Thread
 	 * terminates.
 	 */
-	public void stopNow(boolean block) {
-		synchronized(lock) {
-			critical=false;
-		}
+	public synchronized void stopNow(boolean block) {
+		critical=false;
 		if(block) {
 			while(isRunning()) {
 				try {
@@ -135,11 +129,9 @@ public class UpdateThread implements Runnable {
 	 * be the same when the event is processed.
 	 */
 	public void queueEvent(Event e, Object data) {
-		synchronized(lock) {
-			if(!run) return;
-			events.add(e);
-			this.data.add(data);
-		}
+		if(!run) return;
+		events.add(e);
+		this.data.add(data);
 	}
 	
 	/**
@@ -170,10 +162,8 @@ public class UpdateThread implements Runnable {
 	/**
 	 * @return True if this Object is currently running.
 	 */
-	public boolean isRunning() {
-		synchronized(lock) {
-			return running;
-		}
+	public synchronized boolean isRunning() {
+		return running;
 	}
 	
 	private void processEvent(Event e, Object data) {
