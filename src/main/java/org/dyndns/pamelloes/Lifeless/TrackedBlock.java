@@ -21,8 +21,8 @@ import org.dyndns.pamelloes.Lifeless.serializable.LocationSerializable;
  */
 public class TrackedBlock implements Serializable {
 	private static final long serialVersionUID = -6895861990530377170L;
-	private transient Lifeless life;
-	private transient Location position;
+	transient private Lifeless life;
+	transient private Location position;
 	private int id;
 	private boolean remove;
 	
@@ -35,7 +35,7 @@ public class TrackedBlock implements Serializable {
 	 * @param block The Block to be tracked.
 	 * @param lifeless The current plugin instance.
 	 */
-	public TrackedBlock(Block block, Lifeless lifeless) {
+	public TrackedBlock(final Block block, final Lifeless lifeless) {
 		this(block.getTypeId(),block.getLocation(),lifeless);
 	}
 	
@@ -45,7 +45,7 @@ public class TrackedBlock implements Serializable {
 	 * @param location
 	 * @param lifeless
 	 */
-	public TrackedBlock(int id, Location location, Lifeless lifeless) {
+	public TrackedBlock(final int id, final Location location, final Lifeless lifeless) {
 		life = lifeless;
 		position = location;
 		this.id = id;
@@ -61,7 +61,7 @@ public class TrackedBlock implements Serializable {
 	 * changed by another plugin), then this object is marked for deletion.
 	 * @param id The block's new id.
 	 */
-	public void addChange(Player player, int id) {
+	public void addChange(final Player player, final int id) {
 		if(player==null) {
 			remove=true;
 			return;
@@ -85,7 +85,7 @@ public class TrackedBlock implements Serializable {
 	 * 
 	 * @param player The player who's actions to remove.
 	 */
-	public synchronized void clearPlayer(Player player) {
+	public synchronized void clearPlayer(final Player player) {
 		for(int i=1;i<changesperson.size()-1;i++) {
 			if(changesperson.get(i).equals(player)) {
 				changesperson.remove(i);
@@ -112,7 +112,7 @@ public class TrackedBlock implements Serializable {
 	 * 
 	 * @param player The player who's actions to remove.
 	 */
-	public synchronized void removePlayer(Player player) {
+	public synchronized void removePlayer(final Player player) {
 		for(int i=1;i<changesperson.size()-1;i++) {
 			if(changesperson.get(i).equals(player)) {
 				changesperson.remove(i);
@@ -174,7 +174,7 @@ public class TrackedBlock implements Serializable {
 		});
 	}
 	
-	private void writeObject(ObjectOutputStream out) throws IOException {
+	private void writeObject(final ObjectOutputStream out) throws IOException {
 		out.defaultWriteObject();
 		out.writeObject(new LocationSerializable(position));
 		
@@ -187,7 +187,7 @@ public class TrackedBlock implements Serializable {
 		out.writeObject(names);
 	}
 
-	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+	private void readObject(final ObjectInputStream in) throws IOException, ClassNotFoundException {
 		Plugin plugin = Bukkit.getServer().getPluginManager().getPlugin("Lifeless");
 		if(plugin==null) throw new NullPointerException("No Lifeless plugin could be found!");
 		if(plugin instanceof Lifeless) life = (Lifeless) plugin;

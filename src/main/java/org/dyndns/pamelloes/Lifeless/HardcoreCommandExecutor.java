@@ -13,13 +13,13 @@ import org.bukkit.entity.Player;
  * @author Pamelloes
  */
 public class HardcoreCommandExecutor implements CommandExecutor {
-	private Lifeless lifeless;
+	private final Lifeless lifeless;
 	
-	public HardcoreCommandExecutor(Lifeless plugin) {
+	public HardcoreCommandExecutor(final Lifeless plugin) {
 		lifeless = plugin;
 	}
 	
-	public boolean onCommand(CommandSender sender, Command paramCommand, String paramString, String[] args) {
+	public boolean onCommand(final CommandSender sender, final Command paramCommand, final String paramString, final String[] args) {
 		if(!paramCommand.testPermission(sender)) return true;
 
         Player player = Bukkit.getPlayerExact(args[0]);

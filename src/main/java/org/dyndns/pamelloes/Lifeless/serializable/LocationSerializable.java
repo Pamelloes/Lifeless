@@ -9,12 +9,13 @@ import org.bukkit.Location;
 public class LocationSerializable implements Serializable {
 	private static final long serialVersionUID = -6057281732207926248L;
 	
-	UUID world;
-	double x,y,z;
-	float yaw,pitch;
+	final UUID world;
+	final double x,y,z;
+	final float yaw,pitch;
+	
 	transient Location location = null;
 	
-	public LocationSerializable(Location location) {
+	public LocationSerializable(final Location location) {
 		world = location.getWorld().getUID();
 		x=location.getX();
 		y=location.getY();

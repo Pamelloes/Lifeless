@@ -6,24 +6,24 @@ import org.bukkit.event.block.BlockListener;
 import org.bukkit.event.block.BlockPlaceEvent;
 
 public class LifelessBlockListener extends BlockListener {
-	private UpdateThread queue;
+	private final UpdateThread queue;
 	
-	public LifelessBlockListener(UpdateThread queue) {
+	public LifelessBlockListener(final UpdateThread queue) {
 		this.queue=queue;
 	}
 	
 	@Override
-	public void onBlockBreak(BlockBreakEvent e) {
+	public void onBlockBreak(final BlockBreakEvent e) {
 		queue.queueEvent(e,e.getBlock().getTypeId());
 	}
 	
 	@Override
-	public void onBlockPlace(BlockPlaceEvent e) {
+	public void onBlockPlace(final BlockPlaceEvent e) {
 		queue.queueEvent(e,e.getBlock().getTypeId());
 	}
 	
 	@Override
-	public void onBlockBurn(BlockBurnEvent e) {
+	public void onBlockBurn(final BlockBurnEvent e) {
 		queue.queueEvent(e);
 	}
 }

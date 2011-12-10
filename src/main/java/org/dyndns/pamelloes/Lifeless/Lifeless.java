@@ -27,14 +27,14 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public class Lifeless extends JavaPlugin {
 	
-	public Logger log = Logger.getLogger("Minecraft");
+	public final Logger log = Logger.getLogger("Minecraft");
 
-	private List<String> names = Collections.synchronizedList(new ArrayList<String>());
-	private List<OfflinePlayer> hardcore = Collections.synchronizedList(new ArrayList<OfflinePlayer>());
+	private final List<String> names = Collections.synchronizedList(new ArrayList<String>());
+	private final List<OfflinePlayer> hardcore = Collections.synchronizedList(new ArrayList<OfflinePlayer>());
 	
-	private  UpdateThread async = new UpdateThread(this);
+	private final UpdateThread async = new UpdateThread(this);
 	
-	private YamlConfiguration players = new YamlConfiguration();
+	private final YamlConfiguration players = new YamlConfiguration();
 	
 	public void onEnable() {
 		loadData();
@@ -59,7 +59,7 @@ public class Lifeless extends JavaPlugin {
 	 * backup command was registered due to an issue.
 	 */
 	@SuppressWarnings({ "serial", "unchecked" })
-	private boolean registerCmd(SimplePluginManager pm) {
+	private boolean registerCmd(final SimplePluginManager pm) {
 		Field f = null;
 		try {
 			f = SimplePluginManager.class.getDeclaredField("commandMap");
@@ -148,7 +148,8 @@ public class Lifeless extends JavaPlugin {
 		File file = new File(getDataFolder(),"players.yml");
 		if(file.exists()) try {
 			players.load(file);
-			names = players.getList("players");
+			names.clear();
+			names.addAll(players.getList("players"));
 			Iterator<String> i = names.iterator();
 			while(i.hasNext()) {
 				OfflinePlayer player = getServer().getOfflinePlayer(i.next());
@@ -170,7 +171,7 @@ public class Lifeless extends JavaPlugin {
 	 * Registers the necessary events.
 	 * @param pm The PluginManager to register the events through.
 	 */
-	private void registerEvents(PluginManager pm) {
+	private void registerEvents(final PluginManager pm) {
 		LifelessBlockListener lbl = new LifelessBlockListener(async);
 		pm.registerEvent(Type.BLOCK_BREAK, lbl, Priority.Monitor, this);
 		pm.registerEvent(Type.BLOCK_BURN, lbl, Priority.Monitor, this);
@@ -183,7 +184,7 @@ public class Lifeless extends JavaPlugin {
 	 * @return True if the player was put in hardcore, false if they
 	 * already were in it.
 	 */
-	public boolean hardcore(OfflinePlayer player) {
+	public boolean hardcore(final OfflinePlayer player) {
 		if(hardcore.contains(player)) return false;
 		hardcore.add(player);
 		names.add(player.getName());
@@ -197,7 +198,7 @@ public class Lifeless extends JavaPlugin {
 	 * @return True if the player was removed from hardcore, false if they
 	 * didn't have it in the first place.
 	 */
-	public boolean unHardcore(OfflinePlayer player) {
+	public boolean unHardcore(final OfflinePlayer player) {
 		if(!hardcore.contains(player)) return false;
 		hardcore.remove(player);
 		names.remove(player.getName());
@@ -210,7 +211,7 @@ public class Lifeless extends JavaPlugin {
 	 * @param player The player to check if is in hardcore mode.
 	 * @return True if the given player is in hardcore mode.
 	 */
-	public boolean isHardcore(OfflinePlayer player) {
+	public boolean isHardcore(final OfflinePlayer player) {
 		return hardcore.contains(player);
 	}
 

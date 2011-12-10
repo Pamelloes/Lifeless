@@ -15,15 +15,14 @@ import org.bukkit.entity.Player;
  * @author Pamelloes
  */
 public class HardcoreGameMode extends GameModeCommand {
-
-		private Lifeless life;
+		private final Lifeless life;
 		
-		public HardcoreGameMode(Lifeless life) {
+		public HardcoreGameMode(final Lifeless life) {
 			this.life=life;
 		}
 		
 		@Override
-		public boolean execute(CommandSender sender, String currentAlias, String[] args) {
+		public boolean execute(final CommandSender sender, final String currentAlias, final String[] args) {
 			Player player = null;
 			if(!currentAlias.equalsIgnoreCase("hardcore")) {
 				if(args.length!=2) return super.execute(sender, currentAlias, args);

@@ -22,12 +22,12 @@ import org.bukkit.event.block.BlockPlaceEvent;
  *
  */
 public class UpdateThread implements Runnable {
-	private Lifeless life;
+	private final Lifeless life;
 	private boolean run = true;
 	private boolean critical = true;
 	private boolean running = false;
-	private List<Event> events = Collections.synchronizedList(new ArrayList<Event>());
-	private List<Object> data = Collections.synchronizedList(new ArrayList<Object>());
+	private final List<Event> events = Collections.synchronizedList(new ArrayList<Event>());
+	private final List<Object> data = Collections.synchronizedList(new ArrayList<Object>());
 	
 	private List<TrackedBlock> blocks = new ArrayList<TrackedBlock>();
 	
@@ -37,7 +37,7 @@ public class UpdateThread implements Runnable {
 	 * 
 	 * @param life Current plugin.
 	 */
-	public UpdateThread(Lifeless life) {
+	public UpdateThread(final Lifeless life) {
 		this.life=life;
 	}
 	
@@ -82,7 +82,7 @@ public class UpdateThread implements Runnable {
 	 * @param block Whether or not this method should block until the Thread
 	 * terminates.
 	 */
-	public synchronized void stop(boolean block) {
+	public synchronized void stop(final boolean block) {
 		run = false;
 		if(block) {
 			while(isRunning()) {
@@ -102,7 +102,7 @@ public class UpdateThread implements Runnable {
 	 * @param block Whether or not this method should block until the Thread
 	 * terminates.
 	 */
-	public synchronized void stopNow(boolean block) {
+	public synchronized void stopNow(final boolean block) {
 		critical=false;
 		if(block) {
 			while(isRunning()) {
@@ -117,7 +117,7 @@ public class UpdateThread implements Runnable {
 	 * Adds an event to the event-process queue.
 	 * @param e The event to be processed.
 	 */
-	public void queueEvent(Event e) {
+	public void queueEvent(final Event e) {
 		queueEvent(e,null);
 	}
 	
@@ -128,7 +128,7 @@ public class UpdateThread implements Runnable {
 	 * typically something important that will might not
 	 * be the same when the event is processed.
 	 */
-	public void queueEvent(Event e, Object data) {
+	public void queueEvent(final Event e, final Object data) {
 		if(!run) return;
 		events.add(e);
 		this.data.add(data);
@@ -141,7 +141,7 @@ public class UpdateThread implements Runnable {
 	 * @param asap Whether or not to stop the Thread via stopNow()[true] or stop()[false];
 	 * @throws IOException If an error occurs writing the data.
 	 */
-	public void save(ObjectOutputStream oop, boolean asap) throws IOException {
+	public void save(final ObjectOutputStream oop, final boolean asap) throws IOException {
 		if(asap) stopNow(true);
 		else stop(true);
 		oop.writeObject(blocks);
@@ -155,7 +155,7 @@ public class UpdateThread implements Runnable {
 	 * be resolved.
 	 */
 	@SuppressWarnings("unchecked")
-	public void load(ObjectInputStream oip) throws IOException, ClassNotFoundException {
+	public void load(final ObjectInputStream oip) throws IOException, ClassNotFoundException {
 		blocks = (List<TrackedBlock>) oip.readObject();
 	}
 	
@@ -166,7 +166,7 @@ public class UpdateThread implements Runnable {
 		return running;
 	}
 	
-	private void processEvent(Event e, Object data) {
+	private void processEvent(final Event e, final Object data) {
 		if(e instanceof BlockBreakEvent) {
 			handleBreak((BlockBreakEvent)e, data);
 			return;
@@ -181,7 +181,7 @@ public class UpdateThread implements Runnable {
 		}
 	}
 	
-	private void handleBreak(BlockBreakEvent e, Object data) {
+	private void handleBreak(final BlockBreakEvent e, final Object data) {
 		if(e.isCancelled()) return;
 		Iterator<TrackedBlock> blockz = blocks.iterator();
 		while(blockz.hasNext()) {
@@ -200,7 +200,7 @@ public class UpdateThread implements Runnable {
 		blocks.add(b);
 	}
 	
-	private void handleBurn(BlockBurnEvent e, Object data) {
+	private void handleBurn(final BlockBurnEvent e, final Object data) {
 		if(e.isCancelled()) return;
 		Iterator<TrackedBlock> blockz = blocks.iterator();
 		while(blockz.hasNext()) {
@@ -213,7 +213,7 @@ public class UpdateThread implements Runnable {
 		}
 	}
 	
-	private void handlePlace(BlockPlaceEvent e, Object data) {
+	private void handlePlace(final BlockPlaceEvent e, final Object data) {
 		if(e.isCancelled()) return;
 		int id = e.getBlock().getTypeId();
 		if(data instanceof Integer) id = (Integer) data;
