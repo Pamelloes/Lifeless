@@ -3,6 +3,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Stack;
 
@@ -126,8 +127,8 @@ public class TrackedBlock implements Serializable {
 			return;
 		}
 		if(changesperson.lastElement().equals(player)) {
-			changesperson.remove(changesperson.size()-1);
-			changesid.remove(changesperson.size()-1);
+			changesperson.pop();
+			changesid.pop();
 			int id = changesid.lastElement();
 			updateId(id);
 			if(changesperson.size()<=1) {

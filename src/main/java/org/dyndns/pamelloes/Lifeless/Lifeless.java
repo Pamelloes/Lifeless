@@ -51,6 +51,11 @@ public class Lifeless extends JavaPlugin {
 		if(hccmd) log.warning("[Lifeless] Lifeless enabled with \"/hardcore\"");
 		else log.info("[Lifeless] Lifeless enabled");
 	}
+
+	public void onDisable() {
+		//saveData();
+		log.info("[Lifeless] Lifeless disabled");
+	}
 	
 	/**
 	 * Tries to hook into /gamemode command via reflection.
@@ -218,10 +223,6 @@ public class Lifeless extends JavaPlugin {
 	public boolean isHardcore(final OfflinePlayer player) {
 		return hardcore.contains(player);
 	}
-
-	public void onDisable() {
-		saveData();
-	}
 	
 	/**
 	 * Saves long-term data.
@@ -238,7 +239,6 @@ public class Lifeless extends JavaPlugin {
 		} catch (IOException e) {
 			log.warning("[Lifeless] Could not save block data");
 		}
-		log.info("[Lifeless] Lifeless disabled");
 	}
 
 }
