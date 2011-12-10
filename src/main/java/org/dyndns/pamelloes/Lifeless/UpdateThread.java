@@ -9,10 +9,13 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.bukkit.Material;
+import org.bukkit.OfflinePlayer;
+import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockBurnEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityDeathEvent;
 
 /**
  * This Thread is the Heart of the program, it processes all of the data. If this Thread gets overloaded,
@@ -63,7 +66,7 @@ public class UpdateThread implements Runnable {
 				Thread.sleep(50);
 			} catch(Exception e) {}
 			
-			if(process!=null) processEvent(process,dat);
+			if(process!=null || dat!=null) processEvent(process,dat);
 			
 			synchronized(this) {
 				execute = run;
@@ -167,6 +170,13 @@ public class UpdateThread implements Runnable {
 	}
 	
 	private void processEvent(final Event e, final Object data) {
+		if(e == null) {
+			if(data instanceof OfflinePlayer) {
+				handleLeaveHardcore((OfflinePlayer) data);
+				return;
+			}
+			return;
+		}
 		if(e instanceof BlockBreakEvent) {
 			handleBreak((BlockBreakEvent)e, data);
 			return;
@@ -178,6 +188,18 @@ public class UpdateThread implements Runnable {
 		if(e instanceof BlockPlaceEvent) {
 			handlePlace((BlockPlaceEvent) e, data);
 			return;
+		}
+		if(e instanceof EntityDeathEvent) {
+			handleDeath((EntityDeathEvent) e, data);
+			return;
+		}
+	}
+	
+	private void handleLeaveHardcore(OfflinePlayer player) {
+		Iterator<TrackedBlock> blockz = blocks.iterator();
+		while(blockz.hasNext()) {
+			TrackedBlock b = blockz.next();
+			b.clearPlayer(player);
 		}
 	}
 	
@@ -231,5 +253,16 @@ public class UpdateThread implements Runnable {
 		TrackedBlock b = new TrackedBlock(0,e.getBlock().getLocation(),life);
 		b.addChange(e.getPlayer(), id);
 		blocks.add(b);
+	}
+	
+	private void handleDeath(final EntityDeathEvent e, final Object data) {
+		Player p = (Player) e.getEntity();
+
+		Iterator<TrackedBlock> blockz = blocks.iterator();
+		while(blockz.hasNext()) {
+			TrackedBlock b = blockz.next();
+			b.removePlayer(p);
+			if(b.needsRemoval()) blockz.remove();
+		}
 	}
 }

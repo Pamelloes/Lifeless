@@ -129,6 +129,13 @@ public class Lifeless extends JavaPlugin {
 		defaults.add(vc);
 		return true;
 	}
+
+	/**
+	 * Registers a fallback command in case the program couldn't hook into /gamemode
+	 */
+	private void registerFallback() {
+		this.getCommand("hardcore").setExecutor(new HardcoreCommandExecutor(this));
+	}
 	
 	/**
 	 * Loads saved data.
@@ -159,13 +166,6 @@ public class Lifeless extends JavaPlugin {
 		} catch(Exception e) {
 		}
 	}
-
-	/**
-	 * Registers a fallback command in case the program couldn't hook into /gamemode
-	 */
-	private void registerFallback() {
-		this.getCommand("hardcore").setExecutor(new HardcoreCommandExecutor(this));
-	}
 	
 	/**
 	 * Registers the necessary events.
@@ -176,6 +176,9 @@ public class Lifeless extends JavaPlugin {
 		pm.registerEvent(Type.BLOCK_BREAK, lbl, Priority.Monitor, this);
 		pm.registerEvent(Type.BLOCK_BURN, lbl, Priority.Monitor, this);
 		pm.registerEvent(Type.BLOCK_PLACE, lbl, Priority.Monitor, this);
+		
+		LifelessEntityListener lel = new LifelessEntityListener(this,async);
+		pm.registerEvent(Type.ENTITY_DEATH, lel, Priority.Monitor, this);
 	}
 	
 	/**
@@ -202,6 +205,7 @@ public class Lifeless extends JavaPlugin {
 		if(!hardcore.contains(player)) return false;
 		hardcore.remove(player);
 		names.remove(player.getName());
+		async.queueEvent(null,player);
 		log.info("[Lifeless] " + player.getName() + " has left Hardcore.");
 		return true;
 	}

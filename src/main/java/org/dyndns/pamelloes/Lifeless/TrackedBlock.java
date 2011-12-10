@@ -10,7 +10,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.block.Block;
-import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.dyndns.pamelloes.Lifeless.serializable.LocationSerializable;
 
@@ -61,7 +60,7 @@ public class TrackedBlock implements Serializable {
 	 * changed by another plugin), then this object is marked for deletion.
 	 * @param id The block's new id.
 	 */
-	public void addChange(final Player player, final int id) {
+	public void addChange(final OfflinePlayer player, final int id) {
 		if(player==null) {
 			remove=true;
 			return;
@@ -81,11 +80,11 @@ public class TrackedBlock implements Serializable {
 	 * Removes all actions a player has performed on this block. If the player's actions were
 	 * the most recent to affect this block, then this Object is marked for deletion.
 	 * 
-	 * This is called after the playerleaves hardcore.
+	 * This is called after the player leaves hardcore.
 	 * 
 	 * @param player The player who's actions to remove.
 	 */
-	public synchronized void clearPlayer(final Player player) {
+	public synchronized void clearPlayer(final OfflinePlayer player) {
 		for(int i=1;i<changesperson.size()-1;i++) {
 			if(changesperson.get(i).equals(player)) {
 				changesperson.remove(i);
@@ -112,7 +111,7 @@ public class TrackedBlock implements Serializable {
 	 * 
 	 * @param player The player who's actions to remove.
 	 */
-	public synchronized void removePlayer(final Player player) {
+	public synchronized void removePlayer(final OfflinePlayer player) {
 		for(int i=1;i<changesperson.size()-1;i++) {
 			if(changesperson.get(i).equals(player)) {
 				changesperson.remove(i);
