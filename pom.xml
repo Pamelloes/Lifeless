@@ -4,11 +4,10 @@
 
   <groupId>org.dyndns.pamelloes</groupId>
   <artifactId>Lifeless</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>0.2.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>Lifeless</name>
-  <url>http://maven.apache.org</url>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -26,9 +25,33 @@
 	  <artifactId>bukkit</artifactId>
 	  <version>1.0.0-R1-SNAPSHOT</version>
 	  <type>jar</type>
-	  <scope>compile</scope>
+	  <scope>provided</scope>
     </dependency>
+	<dependency>
+		<groupId>org.xerial</groupId>
+		<artifactId>sqlite-jdbc</artifactId>
+		<version>3.7.2</version>
+		<type>jar</type>
+		<scope>compile</scope>
+	</dependency>
   </dependencies>
+  <build>
+  	<plugins>
+  		<plugin>
+  			<groupId>org.apache.maven.plugins</groupId>
+  			<artifactId>maven-shade-plugin</artifactId>
+  			<version>1.5</version>
+  			<executions>
+  				<execution>
+  					<phase>package</phase>
+  					<goals>
+  						<goal>shade</goal>
+  					</goals>
+  				</execution>
+  			</executions>
+  		</plugin>
+  	</plugins>
+  </build>
   <repositories>
 	<repository>
 	  <id>bukkit-repo</id>

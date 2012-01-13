@@ -1,33 +1,31 @@
 package org.dyndns.pamelloes.Lifeless;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.Stack;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.plugin.Plugin;
-import org.dyndns.pamelloes.Lifeless.serializable.LocationSerializable;
 
 /**
  * This class is used to track changes performed to an associated Location so that they can be undone.
  * 
  * @author Pamelloes
  */
-public class TrackedBlock implements Serializable {
-	private static final long serialVersionUID = -6895861990530377170L;
-	transient private Lifeless life;
-	transient private Location position;
+public class TrackedBlock {
+	private Lifeless life;
+	private Location position;
 	private int id;
 	private boolean remove;
 	
-	private Stack<Integer> changesid = new Stack<Integer>();
-	private transient Stack<OfflinePlayer> changesperson = new Stack<OfflinePlayer>();
+	private List<Integer> changesid = new ArrayList<Integer>();
+	private transient List<OfflinePlayer> changesperson = new ArrayList<OfflinePlayer>();
 	
 	/**
 	 * Creates a new TrackedBlock for the given block.
@@ -49,9 +47,16 @@ public class TrackedBlock implements Serializable {
 		life = lifeless;
 		position = location;
 		this.id = id;
-		changesid.push(id);
-		changesperson.push(null);
+		changesid.add(id);
+		changesperson.add(null);
 		
+	}
+	
+	/**
+	 * Used for loading.
+	 */
+	private TrackedBlock(Lifeless lifeless) {
+		life = lifeless;
 	}
 	
 	/**
@@ -68,8 +73,8 @@ public class TrackedBlock implements Serializable {
 		}
 		
 		if(life.isHardcore(player)) {
-			changesperson.push(player);
-			changesid.push(id);
+			changesperson.add(player);
+			changesid.add(id);
 			this.id = id;
 		} else {
 			remove = true;
@@ -97,7 +102,7 @@ public class TrackedBlock implements Serializable {
 			remove = true;
 			return;
 		}
-		if(changesperson.lastElement().equals(player)) {
+		if(changesperson.get(changesperson.size()-1).equals(player)) {
 			remove=true;
 			return;
 		}
@@ -122,14 +127,14 @@ public class TrackedBlock implements Serializable {
 		}
 		if(changesperson.size()<=1) {
 			remove = true;
-			int id = changesid.lastElement();
+			int id = changesid.get(changesid.size()-1);
 			updateId(id);
 			return;
 		}
-		if(changesperson.lastElement().equals(player)) {
-			changesperson.pop();
-			changesid.pop();
-			int id = changesid.lastElement();
+		if(changesperson.get(changesperson.size()-1).equals(player)) {
+			changesperson.remove(changesperson.size()-1);
+			changesid.remove(changesid.size()-1);
+			int id = changesid.get(changesid.size()-1);
 			updateId(id);
 			if(changesperson.size()<=1) {
 				remove=true;
@@ -165,6 +170,66 @@ public class TrackedBlock implements Serializable {
 		return id;
 	}
 	
+	/**
+	 * Saves this block's data to the database.
+	 */
+	public void save() throws SQLException {
+		Connection c = life.getDBConnection();
+	    Statement statement = c.createStatement();
+	    statement.setQueryTimeout(30);  // set timeout to 30 sec.
+	    ResultSet rs = statement.executeQuery("SELECT DISTINCT main_id FROM blocks");
+	    List<Integer> ids = new ArrayList<Integer>();
+	    while (rs.next()) {
+	    	int id = rs.getInt("main_id");
+	    	ids.add(id);
+	    }
+	    int mainid = ids.isEmpty() ? 0 : Collections.max(ids) + 1;
+	    System.out.println("Position: " + position + "\nWorld: " + position.getWorld());
+	    statement.executeUpdate("insert into blocks values(" + mainid+", "+position.getBlockX()+", "+position.getBlockY()+", "+position.getBlockZ()+", -1, '"+position.getWorld().getName()+"', -1)");
+	    for(int i = 0; i < changesid.size(); i++) {
+	    	int blockid = changesid.get(i);
+	    	OfflinePlayer op = changesperson.get(i);
+	    	String player = op==null ? "" : op.getName();
+		    statement.executeUpdate("insert into blocks values(" + mainid+", -1, -1, -1, "+i+", '" + player + "', "+blockid+")");
+	    }
+	}
+	
+	/**
+	 * Load a trackedBlock with the given id from the database.
+	 */
+	public static TrackedBlock load(int id, Lifeless lifeless) throws SQLException {
+		TrackedBlock tb = new TrackedBlock(lifeless);
+		tb.load(id);
+		return tb;
+	}
+	
+	private void load(int id) throws SQLException {
+		Connection c = life.getDBConnection();
+	    Statement statement = c.createStatement();
+	    statement.setQueryTimeout(30);  // set timeout to 30 sec.
+	    ResultSet rs = statement.executeQuery("SELECT * FROM blocks WHERE main_id="+id+" ORDER BY sub_id ASC");
+	    while(rs.next()) {
+	    	int subid = rs.getInt("sub_id");
+	    	if(subid==-1) {
+	    		int blockx = rs.getInt("x");
+	    		int blocky = rs.getInt("y");
+	    		int blockz = rs.getInt("z");
+	    		String worldname = rs.getString("players");
+	    		World world = Bukkit.getWorld(worldname);
+	    		position = new Location(world,blockx,blocky,blockz);
+	    		System.out.println(position);
+	    		continue;
+	    	}
+	    	String playername = rs.getString("players");
+	    	int blockid = rs.getInt("block_id");
+	    	OfflinePlayer player = playername.equals("") ? null : Bukkit.getOfflinePlayer(playername);
+			changesperson.add(player);
+			changesid.add(blockid);
+			this.id = blockid;
+	    }
+	    if(changesperson.size()<2) remove = true;
+	}
+	
 	private synchronized void updateId(final int id) {
 		this.id=id;
 		life.getServer().getScheduler().scheduleSyncDelayedTask(life, new Runnable() {
@@ -172,41 +237,5 @@ public class TrackedBlock implements Serializable {
 				position.getBlock().setTypeId(id);
 			}
 		});
-	}
-	
-	private void writeObject(final ObjectOutputStream out) throws IOException {
-		out.defaultWriteObject();
-		out.writeObject(new LocationSerializable(position));
-		
-		Stack<String> names = new Stack<String>();
-		names.ensureCapacity(changesperson.size());
-		Iterator<OfflinePlayer> i = changesperson.iterator();
-		while(i.hasNext()) {
-			names.add(i.next().getName());
-		}
-		out.writeObject(names);
-	}
-
-	private void readObject(final ObjectInputStream in) throws IOException, ClassNotFoundException {
-		Plugin plugin = Bukkit.getServer().getPluginManager().getPlugin("Lifeless");
-		if(plugin==null) throw new NullPointerException("No Lifeless plugin could be found!");
-		if(plugin instanceof Lifeless) life = (Lifeless) plugin;
-		else throw new ClassCastException("The plugin called \"Lifeless\" is not an instance of Lifeless!");
-		
-		in.defaultReadObject();
-		position = ((LocationSerializable) in.readObject()).getLocation();
-		
-		@SuppressWarnings("unchecked")
-		Stack<String> names = (Stack<String>) in.readObject();
-		changesperson.ensureCapacity(names.size());
-		Iterator<String> i = names.iterator();
-		Iterator<Integer> ii = changesid.iterator();
-		while(i.hasNext()) {
-			OfflinePlayer player = Bukkit.getOfflinePlayer(i.next());
-			ii.next();
-			if(player==null) ii.remove();
-			else changesperson.add(player);
-		}
-		
 	}
 }

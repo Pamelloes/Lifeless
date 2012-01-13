@@ -1,8 +1,8 @@
 package org.dyndns.pamelloes.Lifeless;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -85,8 +85,10 @@ public class UpdateThread implements Runnable {
 	 * @param block Whether or not this method should block until the Thread
 	 * terminates.
 	 */
-	public synchronized void stop(final boolean block) {
-		run = false;
+	public void stop(final boolean block) {
+		synchronized(this) {
+			run = false;
+		}
 		if(block) {
 			while(isRunning()) {
 				try {
@@ -105,8 +107,10 @@ public class UpdateThread implements Runnable {
 	 * @param block Whether or not this method should block until the Thread
 	 * terminates.
 	 */
-	public synchronized void stopNow(final boolean block) {
-		critical=false;
+	public void stopNow(final boolean block) {
+		synchronized(this) {
+			critical=false;
+		}
 		if(block) {
 			while(isRunning()) {
 				try {
@@ -138,28 +142,33 @@ public class UpdateThread implements Runnable {
 	}
 	
 	/**
-	 * Saves the UpdateThread's data to a file. This method stops the Thread, and
-	 * then waits until the Thread finishes stopping before saving.
-	 * @param oop ObjectOutputStream to write the data to.
-	 * @param asap Whether or not to stop the Thread via stopNow()[true] or stop()[false];
-	 * @throws IOException If an error occurs writing the data.
+	 * Loads the object block data from the database.
+	 * @throws SQLException If the data couldn't be read.
 	 */
-	public void save(final ObjectOutputStream oop, final boolean asap) throws IOException {
-		if(asap) stopNow(true);
-		else stop(true);
-		oop.writeObject(blocks);
+	public void load() throws SQLException {
+		Statement statement = life.getDBConnection().createStatement();
+	    statement.setQueryTimeout(30);  // set timeout to 30 sec.
+	    ResultSet res = statement.executeQuery("SELECT DISTINCT main_id FROM blocks");
+	    while(res.next()) {
+	    	int id = res.getInt("main_id");
+	    	TrackedBlock tb = TrackedBlock.load(id, life);
+	    	blocks.add(tb);
+	    }
 	}
 	
 	/**
-	 * Loads the object block data from an ObjectInputStream.
-	 * @param oip The stream from which to load the data.
-	 * @throws IOException If the data couldn't be read.
-	 * @throws ClassNotFoundException If the class read can't
-	 * be resolved.
+	 * Saves the UpdateThread's data to a file. This method stops the Thread, and
+	 * then waits until the Thread finishes stopping before saving.
+	 * @param asap Whether or not to stop the Thread via stopNow()[true] or stop()[false];
+	 * @throws SQLException if an error occurs saving the data.
 	 */
-	@SuppressWarnings("unchecked")
-	public void load(final ObjectInputStream oip) throws IOException, ClassNotFoundException {
-		blocks = (List<TrackedBlock>) oip.readObject();
+	public void save(final boolean asap) throws SQLException {
+		if(asap) stopNow(true);
+		else stop(true);
+		life.log.info("[Lifeless] Async thread stopped");
+		Statement statement = life.getDBConnection().createStatement();
+		statement.executeUpdate("DELETE FROM blocks");
+		for(TrackedBlock tb : blocks) tb.save();
 	}
 	
 	/**

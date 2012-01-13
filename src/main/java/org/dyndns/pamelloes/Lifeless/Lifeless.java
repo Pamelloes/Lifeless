@@ -1,12 +1,12 @@
 package org.dyndns.pamelloes.Lifeless;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.lang.reflect.Field;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -29,12 +29,13 @@ public class Lifeless extends JavaPlugin {
 	
 	public final Logger log = Logger.getLogger("Minecraft");
 
-	private final List<String> names = Collections.synchronizedList(new ArrayList<String>());
-	private final List<OfflinePlayer> hardcore = Collections.synchronizedList(new ArrayList<OfflinePlayer>());
+	private final List<String> hardcore = Collections.synchronizedList(new ArrayList<String>());
 	
 	private final UpdateThread async = new UpdateThread(this);
 	
 	private final YamlConfiguration players = new YamlConfiguration();
+	
+	private Connection connection;
 	
 	public void onEnable() {
 		loadData();
@@ -53,7 +54,7 @@ public class Lifeless extends JavaPlugin {
 	}
 
 	public void onDisable() {
-		//saveData();
+		saveData();
 		log.info("[Lifeless] Lifeless disabled");
 	}
 	
@@ -147,29 +148,51 @@ public class Lifeless extends JavaPlugin {
 	 */
 	@SuppressWarnings("unchecked")
 	private void loadData() {
-		File f = new File(this.getDataFolder(),"block.dat");
-		if(f.exists()) {
-			try {
-				async.load(new ObjectInputStream(new FileInputStream(f)));
-			} catch (IOException e) {
-				log.warning("[Lifeless] Could not load block data");
-			} catch (ClassNotFoundException e) {
-				log.warning("[Lifeless] Could not resolve block data");
-			}
-		}
 		File file = new File(getDataFolder(),"players.yml");
 		if(file.exists()) try {
 			players.load(file);
-			names.clear();
-			names.addAll(players.getList("players"));
-			Iterator<String> i = names.iterator();
+			hardcore.clear();
+			hardcore.addAll(players.getList("players"));
+			Iterator<String> i = hardcore.iterator();
 			while(i.hasNext()) {
 				OfflinePlayer player = getServer().getOfflinePlayer(i.next());
 				if(player==null) i.remove();
-				else hardcore.add(player);
 			}
 		} catch(Exception e) {
+			e.printStackTrace();
 		}
+
+		try {
+			Class.forName("org.sqlite.JDBC");
+		    connection = DriverManager.getConnection("jdbc:sqlite:" + new File(getDataFolder(),"data.db").getAbsolutePath());
+		    Statement statement = connection.createStatement();
+		    statement.setQueryTimeout(30);  // set timeout to 30 sec.
+		    statement.executeUpdate("create table if not exists blocks (main_id integer, x integer, y integer, z integer, sub_id integer, players string, block_id integer)");
+		    async.load();
+		} catch (ClassNotFoundException e) {
+			log.info("[Lifeless] Could not load SQLite.");
+		} catch (SQLException e) {
+			log.info("[Lifeless] Could not load/create database.");
+		}
+		log.info("[Lifeless] Loaded data.");
+	}
+	
+	/**
+	 * Saves long-term data.
+	 */
+	private void saveData() {
+		players.set("players",hardcore);
+		try {
+			players.save(new File(this.getDataFolder(),"players.yml"));
+		} catch (IOException e) {
+			log.warning("[Lifeless] Could not save active players");
+		}
+		 try {
+			async.save(true);
+		} catch (SQLException e) {
+			log.warning("[Lifeles] Could not save block data.");
+		}
+		log.info("[Lifeless] Saved data.");
 	}
 	
 	/**
@@ -193,9 +216,8 @@ public class Lifeless extends JavaPlugin {
 	 * already were in it.
 	 */
 	public boolean hardcore(final OfflinePlayer player) {
-		if(hardcore.contains(player)) return false;
-		hardcore.add(player);
-		names.add(player.getName());
+		if(hardcore.contains(player.getName())) return false;
+		hardcore.add(player.getName());
 		log.info("[Lifeless] " + player.getName() + " has entered Hardcore.");
 		return true;
 	}
@@ -207,9 +229,8 @@ public class Lifeless extends JavaPlugin {
 	 * didn't have it in the first place.
 	 */
 	public boolean unHardcore(final OfflinePlayer player) {
-		if(!hardcore.contains(player)) return false;
-		hardcore.remove(player);
-		names.remove(player.getName());
+		if(!hardcore.contains(player.getName())) return false;
+		hardcore.remove(player.getName());
 		async.queueEvent(null,player);
 		log.info("[Lifeless] " + player.getName() + " has left Hardcore.");
 		return true;
@@ -221,24 +242,13 @@ public class Lifeless extends JavaPlugin {
 	 * @return True if the given player is in hardcore mode.
 	 */
 	public boolean isHardcore(final OfflinePlayer player) {
-		return hardcore.contains(player);
+		return hardcore.contains(player.getName());
 	}
 	
 	/**
-	 * Saves long-term data.
+	 * Gets the database connection.
 	 */
-	private void saveData() {
-		players.set("players",names);
-		try {
-			players.save(new File(this.getDataFolder(),"players.yml"));
-		} catch (IOException e) {
-			log.warning("[Lifeless] Could not save active players");
-		}
-		try {
-			async.save(new ObjectOutputStream(new FileOutputStream(new File(this.getDataFolder(),"block.dat"))), false);
-		} catch (IOException e) {
-			log.warning("[Lifeless] Could not save block data");
-		}
+	public Connection getDBConnection() {
+		return connection;
 	}
-
 }

@@ -1,6 +1,6 @@
 name: Lifeless
 main: org.dyndns.pamelloes.Lifeless.Lifeless
-version: 0.1
+version: 0.2
 description: Lets you play in Hardcore mode in SMP.
 commands:
    hardcore:
