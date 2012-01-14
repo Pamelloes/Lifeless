@@ -1,8 +1,12 @@
 package org.dyndns.pamelloes.Lifeless;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.net.URL;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -38,6 +42,13 @@ public class Lifeless extends JavaPlugin {
 	private Connection connection;
 	
 	public void onEnable() {
+		try {
+			downloadSQLite();
+		} catch (IOException e) {
+			log.severe("Could not download SQLite!");
+			e.printStackTrace();
+		}
+		
 		loadData();
 
 		PluginManager pm = getServer().getPluginManager();
@@ -250,5 +261,18 @@ public class Lifeless extends JavaPlugin {
 	 */
 	public Connection getDBConnection() {
 		return connection;
+	}
+
+	private void downloadSQLite() throws IOException {
+		File dir = new File("lib");
+		if (!dir.exists()) dir.mkdir();
+		File file = new File(dir, "sqlite-jdbc.jar");
+		if (file.exists()) return;
+		log.info("[Lifeless] Downloading dependencies.");
+		URL google = new URL("http://www.xerial.org/maven/repository/artifact/org/xerial/sqlite-jdbc/3.7.2/sqlite-jdbc-3.7.2.jar");
+		ReadableByteChannel rbc = Channels.newChannel(google.openStream());
+		FileOutputStream fos = new FileOutputStream(file);
+		fos.getChannel().transferFrom(rbc, 0, 1 << 24);
+		log.info("[Lifeless] Downloaded.");
 	}
 }
